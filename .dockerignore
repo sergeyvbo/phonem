@@ -1,0 +1,14 @@
+# Exclude non-backend files from the Docker image
+.git
+.github
+frontend
+venv
+backend/venv
+data
+backend/data
+node_modules
+README.md
+implementation_plan.md
+task.md
+walkthrough.md
+test_load.py
