@@ -220,8 +220,8 @@ function App() {
 
               {result.transcribed_text && (
                 <div className="text-center w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">We heard</span>
-                  <p className="text-lg text-gray-700 font-medium">"{result.transcribed_text}"</p>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">We heard (sounds)</span>
+                  <p className="text-lg text-gray-700 font-mono font-medium">{result.transcribed_text}</p>
                 </div>
               )}
             </div>

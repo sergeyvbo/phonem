@@ -138,31 +138,27 @@ def score_practice(audio: UploadFile = File(...), text: str = Form(...), ref_pho
         with open(user_audio_path, "wb") as buffer:
             shutil.copyfileobj(audio.file, buffer)
             
-        # 2. Transcribe user audio with Whisper (actual speech recognition)
-        print("[API] Transcribing user audio with Whisper...")
-        transcribed_text = recognizer_service.transcribe(str(user_audio_path))
-        print(f"[API] User said: '{transcribed_text}'")
+        # 2. Recognize phones with Allosaurus (direct phonetic recognition)
+        print("[API] Recognizing phones with Allosaurus...")
+        user_phonemes_ipa = recognizer_service.transcribe(str(user_audio_path))
+        print(f"[API] User sounds: {user_phonemes_ipa}")
         
-        # 3. Generate phonemes from what the user actually said
+        # 3. Get reference phonemes (re-generate from text to ensure consistency)
         global g2p_model
         if not g2p_model:
             g2p_model = G2p()
         
-        user_phonemes_arpa = g2p_model(transcribed_text)
-        user_phonemes_arpa = [p for p in user_phonemes_arpa if p.strip() and p not in ["'", ",", ".", " ", "?", "!"]]
-        user_phonemes_ipa = convert_phonemes(user_phonemes_arpa)
-        print(f"[API] User phonemes (IPA): {user_phonemes_ipa}")
-        
-        # 4. Get reference phonemes (re-generate from text to ensure consistency)
         ref_phonemes_arpa = g2p_model(text)
         ref_phonemes_arpa = [p for p in ref_phonemes_arpa if p.strip() and p not in ["'", ",", ".", " ", "?", "!"]]
         ref_phonemes_ipa = convert_phonemes(ref_phonemes_arpa)
         print(f"[API] Reference phonemes (IPA): {ref_phonemes_ipa}")
             
-        # 5. Compare IPA phonemes
+        # 4. Compare IPA phonemes
         print("[API] Scoring comparison...")
         score_result = scorer_service.compare_phonemes(ref_phonemes_ipa, user_phonemes_ipa)
-        score_result["transcribed_text"] = transcribed_text
+        
+        # We'll use the 'transcribed_text' field to show the recognized sounds to the user
+        score_result["transcribed_text"] = "/ " + " ".join(user_phonemes_ipa) + " /"
         print(f"[API] Score: {score_result['score']}")
         
         # 6. Delete user audio immediately (Save space!)

@@ -8,4 +8,4 @@ numpy
 scipy
 soundfile
 edge-tts
-openai-whisper
+allosaurus

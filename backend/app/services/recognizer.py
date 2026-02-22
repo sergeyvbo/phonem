@@ -1,39 +1,35 @@
 """
-Speech recognition service using OpenAI Whisper.
-Transcribes user audio to text so we can extract actual spoken phonemes.
+Phonetic recognition service using Allosaurus.
+Transcribes user audio directly into phonetic sounds (phones/phonemes).
 """
 
-import whisper
+from allosaurus.app import read_recognizer
 
 
 class RecognizerService:
-    def __init__(self, model_name: str = "tiny"):
+    def __init__(self, model_name: str = "eng2102"):
         """
-        Initialize Whisper model.
-        Model sizes: tiny (~75MB), base (~140MB), small (~460MB)
-        'base' is a good balance of speed and accuracy for short phrases.
+        Initialize Allosaurus recognizer.
+        Default model 'eng2102' is optimized for English.
         """
-        print(f"[Recognizer] Loading Whisper '{model_name}' model...")
-        self.model = whisper.load_model(model_name)
-        print(f"[Recognizer] Whisper model loaded.")
+        print(f"[Recognizer] Loading Allosaurus '{model_name}' model...")
+        self.model = read_recognizer(model_name)
+        print(f"[Recognizer] Allosaurus model loaded.")
 
-    def transcribe(self, audio_path: str) -> str:
+    def transcribe(self, audio_path: str) -> list[str]:
         """
-        Transcribe an audio file to text.
-        Loads audio using librosa to avoid ffmpeg dependency.
-        Returns the recognized text (lowercased, stripped).
+        Transcribe an audio file directly to phonemes.
+        Returns a list of IPA phonemes.
         """
-        import librosa
-        print(f"[Recognizer] Loading audio with librosa: {audio_path}")
-        # Whisper expects 16,000Hz mono audio
-        audio, _ = librosa.load(audio_path, sr=16000)
+        print(f"[Recognizer] Recognizing phones in: {audio_path}")
         
-        print(f"[Recognizer] Transcribing with Whisper...")
-        result = self.model.transcribe(
-            audio,
-            language="en",
-            fp16=False,
-        )
-        text = result["text"].strip()
-        print(f"[Recognizer] Transcription: '{text}'")
-        return text
+        # recognize returns phones separated by spaces
+        # e.g., "h e l o u"
+        phones_str = self.model.recognize(audio_path)
+        
+        # Clean up and convert to list
+        # Allosaurus uses its own internal phone set which is close to IPA
+        phones = phones_str.strip().split()
+        
+        print(f"[Recognizer] Recognized phones: {phones}")
+        return phones
