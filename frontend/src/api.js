@@ -1,7 +1,13 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const rawEnvUrl = import.meta.env.VITE_API_URL;
+console.log('[DEBUG] VITE_API_URL from environment:', rawEnvUrl);
+
+const API_BASE_URL = rawEnvUrl ? rawEnvUrl.replace(/\/api$/, '') : 'http://localhost:8000';
 const API_URL = `${API_BASE_URL}/api`;
+
+console.log('[DEBUG] Resolved API_BASE_URL:', API_BASE_URL);
+console.log('[DEBUG] Resolved API_URL:', API_URL);
 
 export { API_BASE_URL };
 
