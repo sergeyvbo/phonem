@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initPractice, scorePractice, getVoices } from './api';
+import { initPractice, scorePractice, getVoices, API_BASE_URL } from './api';
 import AudioRecorder from './components/AudioRecorder';
 import PhonemeDisplay from './components/PhonemeDisplay';
 import { Play, Square, RotateCcw, RefreshCcw } from 'lucide-react';
@@ -21,7 +21,7 @@ function App() {
     getVoices().then(setVoices).catch(() => {});
   }, []);
 
-  // Convert speed slider value (e.g. 75) to edge-tts rate string (e.g. "-25%")
+  // Convert speed slider value (e.g. 74) to edge-tts rate string (e.g. "-26%")
   const speedToRate = (s) => {
     const delta = s - 100;
     return delta >= 0 ? `+${delta}%` : `${delta}%`;
@@ -36,8 +36,8 @@ function App() {
     setLoading(true);
     try {
       const data = await initPractice(text, selectedVoice, speedToRate(speed));
-      setAudioUrl(`http://localhost:8000${data.audio_url}`);
-      setRefPhonemes(data.phonemes);
+      setAudioUrl(`${API_BASE_URL}${data.audio_url}`);
+      setRefPhonemes(data.phonemes_arpa);
       setScreen('practice');
     } catch (err) {
       alert("Failed to initialize practice");
