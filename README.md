@@ -1,3 +1,13 @@
+---
+title: Phonem
+emoji: 🗣️
+colorFrom: indigo
+colorTo: indigo
+sdk: docker
+pinned: false
+app_port: 7860
+---
+
 # Pronunciation Trainer
 
 A full-stack application for practicing English pronunciation with real-time feedback using IPA phonemes and OpenAI Whisper.
