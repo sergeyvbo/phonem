@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initPractice, scorePractice, getVoices } from './api';
 import AudioRecorder from './components/AudioRecorder';
 import PhonemeDisplay from './components/PhonemeDisplay';
-import { Play, RotateCcw } from 'lucide-react';
+import { Play, Square, RotateCcw, RefreshCcw } from 'lucide-react';
 
 function App() {
   const [text, setText] = useState("Hello world");
@@ -14,6 +14,8 @@ function App() {
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState('en-US-AriaNeural');
   const [speed, setSpeed] = useState(75); // percentage: 75 means 0.75x
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     getVoices().then(setVoices).catch(() => {});
@@ -26,6 +28,11 @@ function App() {
   };
 
   const handleInit = async () => {
+    // Stop any playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
     setLoading(true);
     try {
       const data = await initPractice(text, selectedVoice, speedToRate(speed));
@@ -53,10 +60,38 @@ function App() {
   };
 
   const reset = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
     setScreen('input');
     setResult(null);
     setAudioUrl(null);
     setRefPhonemes([]);
+  };
+
+  const handleRetry = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+    setResult(null);
+    setScreen('practice');
+  };
+
+  const toggleReferenceAudio = () => {
+    if (isPlaying) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    } else {
+      if (!audioRef.current || audioRef.current.src !== audioUrl) {
+        audioRef.current = new Audio(audioUrl);
+        audioRef.current.onended = () => setIsPlaying(false);
+      }
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
   };
 
   return (
@@ -126,11 +161,24 @@ function App() {
             
             {audioUrl && (
               <button 
-                onClick={() => new Audio(audioUrl).play()}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition"
+                onClick={toggleReferenceAudio}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition ${
+                  isPlaying 
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                    : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                }`}
               >
-                <Play size={20} fill="currentColor" />
-                Listen to Reference
+                {isPlaying ? (
+                  <>
+                    <Square size={20} fill="currentColor" />
+                    Stop Listening
+                  </>
+                ) : (
+                  <>
+                    <Play size={20} fill="currentColor" />
+                    Listen to Reference
+                  </>
+                )}
               </button>
             )}
 
@@ -157,22 +205,39 @@ function App() {
               <div className="text-5xl font-bold text-indigo-600">{result.score}%</div>
             </div>
 
-            {result.transcribed_text && (
-              <div className="text-center w-full px-4 py-2 bg-gray-50 rounded-lg">
-                <span className="text-xs text-gray-400 uppercase tracking-wider">We heard</span>
-                <p className="text-lg text-gray-700 font-medium">"{result.transcribed_text}"</p>
+            <div className="w-full flex flex-col gap-3">
+              <div className="text-center w-full px-4 py-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <span className="text-xs text-indigo-400 uppercase tracking-wider font-semibold">Expected</span>
+                <p className="text-lg text-indigo-900 font-medium">"{text}"</p>
               </div>
-            )}
+
+              {result.transcribed_text && (
+                <div className="text-center w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">We heard</span>
+                  <p className="text-lg text-gray-700 font-medium">"{result.transcribed_text}"</p>
+                </div>
+              )}
+            </div>
 
             <PhonemeDisplay diffs={result.details} />
 
-            <button
-              onClick={reset}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition mt-4"
-            >
-              <RotateCcw size={20} />
-              Try Another
-            </button>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition"
+              >
+                <RefreshCcw size={20} />
+                Retry
+              </button>
+              
+              <button
+                onClick={reset}
+                className="flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition"
+              >
+                <RotateCcw size={20} />
+                Try Another
+              </button>
+            </div>
           </div>
         )}
       </div>
