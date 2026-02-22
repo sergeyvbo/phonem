@@ -13,6 +13,10 @@ import traceback
 import sys
 from app.core.config import settings
 from g2p_en import G2p
+from pydantic import BaseModel
+
+class DeleteAudioRequest(BaseModel):
+    audio_url: str
 
 router = APIRouter()
 aligner_service = AlignerService()
@@ -42,6 +46,27 @@ except Exception as e:
 def get_voices():
     """Returns the list of available TTS voices."""
     return JSONResponse(AVAILABLE_VOICES)
+
+@router.post("/audio/delete")
+async def delete_audio(request: DeleteAudioRequest):
+    """
+    Deletes an audio file from the output directory based on its URL.
+    """
+    try:
+        # Extract filename from URL (e.g., /static/filename.mp3)
+        filename = os.path.basename(request.audio_url)
+        file_path = settings.OUTPUT_DIR / filename
+        
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"[API] Deleted reference audio: {file_path}")
+            return {"status": "deleted"}
+        else:
+            print(f"[API] File not found for deletion: {file_path}")
+            return {"status": "not_found"}
+    except Exception as e:
+        print(f"[API] Error deleting audio: {e}")
+        return {"status": "error", "detail": str(e)}
 
 @router.post("/practice/init")
 async def init_practice(
@@ -140,6 +165,14 @@ def score_practice(audio: UploadFile = File(...), text: str = Form(...), ref_pho
         score_result["transcribed_text"] = transcribed_text
         print(f"[API] Score: {score_result['score']}")
         
+        # 6. Delete user audio immediately (Save space!)
+        try:
+            if os.path.exists(user_audio_path):
+                os.remove(user_audio_path)
+                print(f"[API] Deleted user audio: {user_audio_path}")
+        except Exception as e:
+            print(f"[API] Failed to delete user audio: {e}")
+            
         return JSONResponse(score_result)
         
     except Exception as e:

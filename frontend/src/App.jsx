@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initPractice, scorePractice, getVoices, API_BASE_URL } from './api';
+import { initPractice, scorePractice, getVoices, API_BASE_URL, deleteAudio } from './api';
 import AudioRecorder from './components/AudioRecorder';
 import PhonemeDisplay from './components/PhonemeDisplay';
 import { Play, Square, RotateCcw, RefreshCcw } from 'lucide-react';
@@ -33,6 +33,10 @@ function App() {
       audioRef.current.pause();
       setIsPlaying(false);
     }
+    if (audioUrl) {
+      deleteAudio(audioUrl);
+    }
+
     setLoading(true);
     try {
       const data = await initPractice(text, selectedVoice, speedToRate(speed));
@@ -63,6 +67,9 @@ function App() {
     if (audioRef.current) {
       audioRef.current.pause();
       setIsPlaying(false);
+    }
+    if (audioUrl) {
+      deleteAudio(audioUrl);
     }
     setScreen('input');
     setResult(null);

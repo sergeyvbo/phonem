@@ -48,3 +48,11 @@ export const scorePractice = async (audioBlob, text, refPhonemes) => {
         throw error;
     }
 };
+
+export const deleteAudio = async (audioUrl) => {
+    try {
+        await axios.post(`${API_URL}/audio/delete`, { audio_url: audioUrl });
+    } catch (error) {
+        console.error("Error deleting audio:", error);
+    }
+};

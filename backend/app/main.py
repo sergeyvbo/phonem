@@ -3,9 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api import routes
 from app.core.config import settings
+from app.services.cleanup import cleanup_weekly
 import os
+import asyncio
 
 app = FastAPI(title="Pronunciation Trainer")
+
+@app.on_event("startup")
+async def startup_event():
+    # Start the weekly cleanup task in the background
+    asyncio.create_task(cleanup_weekly())
 
 # Ensure static directories exist
 os.makedirs(settings.OUTPUT_DIR, exist_ok=True)
