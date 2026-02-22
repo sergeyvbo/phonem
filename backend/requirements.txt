@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+g2p_en
+Levenshtein
+librosa
+numpy
+scipy
+soundfile
+edge-tts
+openai-whisper

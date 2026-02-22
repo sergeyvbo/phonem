@@ -1,0 +1,32 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from app.api import routes
+from app.core.config import settings
+import os
+
+app = FastAPI(title="Pronunciation Trainer")
+
+# Ensure static directories exist
+os.makedirs(settings.OUTPUT_DIR, exist_ok=True)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(routes.router, prefix="/api")
+
+# Serve generated audio files
+app.mount("/static", StaticFiles(directory=str(settings.OUTPUT_DIR)), name="static")
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Pronunciation Trainer API"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
