@@ -25,8 +25,9 @@ COPY backend/app ./app
 # Add __init__.py to ensure it's treated as a package
 RUN touch ./app/__init__.py ./app/api/__init__.py ./app/core/__init__.py ./app/services/__init__.py
 
-# Pre-download the Whisper model to avoid timeout on first request and ensure it works offline
+# Pre-download the Whisper model and NLTK resources to avoid timeout on first request and ensure it works offline
 RUN python -c "import whisper; whisper.load_model('tiny')"
+RUN python -c "import nltk; nltk.download('averaged_perceptron_tagger_eng')"
 
 # Create data directories with permissions
 RUN mkdir -p /tmp/data/inputs /tmp/data/outputs && chmod -R 777 /tmp/data
