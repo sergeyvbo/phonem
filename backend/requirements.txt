@@ -8,4 +8,7 @@ numpy
 scipy
 soundfile
 edge-tts
-allosaurus
+transformers
+torch
+phonemizer
+protobuf

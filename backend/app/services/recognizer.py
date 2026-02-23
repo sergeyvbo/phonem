@@ -1,35 +1,54 @@
 """
-Phonetic recognition service using Allosaurus.
-Transcribes user audio directly into phonetic sounds (phones/phonemes).
+Phonetic recognition service using Wav2Vec2 (Transformer).
+Transcribes user audio directly into phonetic sounds (IPA).
+More robust than Allosaurus for noisy environments.
 """
 
-from allosaurus.app import read_recognizer
-
-
 class RecognizerService:
-    def __init__(self, model_name: str = "eng2102"):
+    def __init__(self, model_name: str = "speech31/wav2vec2-large-english-phoneme-v2"):
         """
-        Initialize Allosaurus recognizer.
-        Default model 'eng2102' is optimized for English.
+        Initialize Wav2Vec2 recognizer.
+        Optimized for English IPA phoneme recognition.
         """
-        print(f"[Recognizer] Loading Allosaurus '{model_name}' model...")
-        self.model = read_recognizer(model_name)
-        print(f"[Recognizer] Allosaurus model loaded.")
+        print(f"[Recognizer] Initializing Wav2Vec2 with model: {model_name}")
+        from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
+        self.processor = Wav2Vec2Processor.from_pretrained(model_name)
+        self.model = Wav2Vec2ForCTC.from_pretrained(model_name)
+        print(f"[Recognizer] Wav2Vec2 model loaded.")
 
     def transcribe(self, audio_path: str) -> list[str]:
         """
-        Transcribe an audio file directly to phonemes.
-        Returns a list of IPA phonemes.
+        Transcribe an audio file directly to IPA phonemes.
+        Returns a flat list of IPA characters for robust alignment.
         """
+        import torch
+        import librosa
+        import re
+        
         print(f"[Recognizer] Recognizing phones in: {audio_path}")
         
-        # recognize returns phones separated by spaces
-        # e.g., "h e l o u"
-        phones_str = self.model.recognize(audio_path)
+        # 1. Load audio (Wav2Vec2 expects 16kHz)
+        audio, _ = librosa.load(audio_path, sr=16000)
         
-        # Clean up and convert to list
-        # Allosaurus uses its own internal phone set which is close to IPA
-        phones = phones_str.strip().split()
+        # 2. Process audio
+        input_values = self.processor(audio, sampling_rate=16000, return_tensors="pt").input_values
         
-        print(f"[Recognizer] Recognized phones: {phones}")
+        # 3. Inference
+        with torch.no_grad():
+            logits = self.model(input_values).logits
+        
+        # 4. Decode
+        predicted_ids = torch.argmax(logits, dim=-1)
+        transcription = self.processor.batch_decode(predicted_ids)[0]
+        print(f"[Recognizer] Raw transcription: '{transcription}'")
+        
+        # 5. Clean and Flatten to individual IPA units
+        # We remove stress marks (ˈ, ˌ), long marks (ː), and spaces.
+        clean_text = re.sub(r"[ˈˌː' \-]", "", transcription)
+        
+        # Convert string to list of characters. 
+        # For alignment, treating each IPA char as a unit is robust.
+        phones = list(clean_text)
+        
+        print(f"[Recognizer] Flattened phones: {phones}")
         return phones

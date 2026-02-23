@@ -19,9 +19,44 @@ class DeleteAudioRequest(BaseModel):
     audio_url: str
 
 router = APIRouter()
-aligner_service = AlignerService()
-scorer_service = ScorerService()
-recognizer_service = RecognizerService()
+
+# Global instances for lazy loading
+_aligner_service = None
+_scorer_service = None
+_recognizer_service = None
+_g2p_model = None
+
+def get_aligner():
+    global _aligner_service
+    if _aligner_service is None:
+        _aligner_service = AlignerService()
+    return _aligner_service
+
+def get_scorer():
+    global _scorer_service
+    if _scorer_service is None:
+        _scorer_service = ScorerService()
+    return _scorer_service
+
+def get_recognizer():
+    global _recognizer_service
+    if _recognizer_service is None:
+        try:
+            _recognizer_service = RecognizerService()
+        except Exception as e:
+            print(f"[API] ERROR: Failed to load Allosaurus: {e}")
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail="Failed to load recognition engine")
+    return _recognizer_service
+
+def get_g2p():
+    global _g2p_model
+    if _g2p_model is None:
+        from g2p_en import G2p
+        print("[API] Loading G2P model...")
+        _g2p_model = G2p()
+        print("[API] G2P model loaded.")
+    return _g2p_model
 
 AVAILABLE_VOICES = [
     {"id": "en-US-AriaNeural", "label": "Aria (US Female)"},
@@ -33,14 +68,7 @@ AVAILABLE_VOICES = [
     {"id": "en-AU-WilliamNeural", "label": "William (AU Male)"},
 ]
 
-print("Loading G2P model...")
-try:
-    g2p_model = G2p()
-    print("G2P model loaded.")
-except Exception as e:
-    print(f"Failed to initialize G2P model: {e}")
-    traceback.print_exc()
-    g2p_model = None
+# Removed global g2p loading from module level
 
 @router.get("/voices")
 def get_voices():
@@ -87,19 +115,22 @@ async def init_practice(
         
         # 2. Generate Reference Phonemes
         print("[API] Generating phonemes...")
-        global g2p_model
-        if not g2p_model:
-             print("[API] Initializing G2P model just in time...")
-             g2p_model = G2p()
-             
-        phonemes_arpa = g2p_model(text)
+        g2p = get_g2p()
+        phonemes_arpa = g2p(text)
         # Clean phonemes
         phonemes_arpa = [p for p in phonemes_arpa if p.strip() and p not in ["'", ",", ".", " ", "?", "!"]]
         print(f"[API] ARPAbet phonemes: {phonemes_arpa}")
         
         # Convert to IPA for display
-        phonemes_ipa = convert_phonemes(phonemes_arpa)
-        print(f"[API] IPA phonemes: {phonemes_ipa}")
+        phonemes_ipa_list = convert_phonemes(phonemes_arpa)
+        
+        # Flatten and clean IPA symbols (remove stress marks, long marks, and join to chars)
+        import re
+        all_ipa_str = "".join(phonemes_ipa_list)
+        clean_ipa_str = re.sub(r"[ˈˌː' \-]", "", all_ipa_str)
+        phonemes_ipa = list(clean_ipa_str)
+        
+        print(f"[API] IPA phonemes (flattened): {phonemes_ipa}")
         
         # Return relative path for frontend to access (we need to serve static files)
         filename = os.path.basename(audio_path)
@@ -140,25 +171,33 @@ def score_practice(audio: UploadFile = File(...), text: str = Form(...), ref_pho
             
         # 2. Recognize phones with Allosaurus (direct phonetic recognition)
         print("[API] Recognizing phones with Allosaurus...")
-        user_phonemes_ipa = recognizer_service.transcribe(str(user_audio_path))
+        recognizer = get_recognizer()
+        user_phonemes_ipa = recognizer.transcribe(str(user_audio_path))
         print(f"[API] User sounds: {user_phonemes_ipa}")
         
         # 3. Get reference phonemes (re-generate from text to ensure consistency)
-        global g2p_model
-        if not g2p_model:
-            g2p_model = G2p()
-        
-        ref_phonemes_arpa = g2p_model(text)
+        g2p = get_g2p()
+        ref_phonemes_arpa = g2p(text)
         ref_phonemes_arpa = [p for p in ref_phonemes_arpa if p.strip() and p not in ["'", ",", ".", " ", "?", "!"]]
-        ref_phonemes_ipa = convert_phonemes(ref_phonemes_arpa)
-        print(f"[API] Reference phonemes (IPA): {ref_phonemes_ipa}")
+        ref_phonemes_ipa_list = convert_phonemes(ref_phonemes_arpa)
+        
+        # Consistent flattening for scoring
+        import re
+        all_ref_ipa_str = "".join(ref_phonemes_ipa_list)
+        clean_ref_ipa_str = re.sub(r"[ˈˌː' \-]", "", all_ref_ipa_str)
+        ref_phonemes_ipa = list(clean_ref_ipa_str)
+        
+        print(f"[API] Reference phonemes (IPA flattened): {ref_phonemes_ipa}")
             
         # 4. Compare IPA phonemes
         print("[API] Scoring comparison...")
-        score_result = scorer_service.compare_phonemes(ref_phonemes_ipa, user_phonemes_ipa)
+        scorer = get_scorer()
+        score_result = scorer.compare_phonemes(ref_phonemes_ipa, user_phonemes_ipa)
         
         # We'll use the 'transcribed_text' field to show the recognized sounds to the user
-        score_result["transcribed_text"] = "/ " + " ".join(user_phonemes_ipa) + " /"
+        # Since user_phonemes_ipa is now a flat list of characters, we might want to space them out 
+        # but the logic for 'transcribed_text' should probably stay readable.
+        score_result["transcribed_text"] = "/ " + "".join(user_phonemes_ipa) + " /"
         print(f"[API] Score: {score_result['score']}")
         
         # 6. Delete user audio immediately (Save space!)

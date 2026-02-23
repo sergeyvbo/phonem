@@ -25,8 +25,11 @@ COPY backend/app ./app
 # Add __init__.py to ensure it's treated as a package
 RUN touch ./app/__init__.py ./app/api/__init__.py ./app/core/__init__.py ./app/services/__init__.py
 
-# Pre-download the Allosaurus model and NLTK resources to avoid timeout on first request and ensure it works offline
-RUN python -m allosaurus.bin.download_model -m eng2102
+# Pre-download the Wav2Vec2 model and NLTK resources to avoid timeout on first request and ensure it works offline
+RUN python -c "from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC; \
+    m = 'speech31/wav2vec2-large-english-phoneme-v2'; \
+    Wav2Vec2Processor.from_pretrained(m); \
+    Wav2Vec2ForCTC.from_pretrained(m)"
 RUN python -c "import nltk; nltk.download('averaged_perceptron_tagger_eng')"
 
 # Create data directories with permissions
