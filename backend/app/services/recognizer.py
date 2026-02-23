@@ -23,7 +23,7 @@ class RecognizerService:
         """
         import torch
         import librosa
-        import re
+        from app.services.phoneme_converter import normalize_ipa_sequence
         
         print(f"[Recognizer] Recognizing phones in: {audio_path}")
         
@@ -42,13 +42,8 @@ class RecognizerService:
         transcription = self.processor.batch_decode(predicted_ids)[0]
         print(f"[Recognizer] Raw transcription: '{transcription}'")
         
-        # 5. Clean and Flatten to individual IPA units
-        # We remove stress marks (ˈ, ˌ), long marks (ː), and spaces.
-        clean_text = re.sub(r"[ˈˌː' \-]", "", transcription)
-        
-        # Convert string to list of characters. 
-        # For alignment, treating each IPA char as a unit is robust.
-        phones = list(clean_text)
+        # 5. Clean and Flatten to individual IPA units using centralized normalizer
+        phones = normalize_ipa_sequence([transcription])
         
         print(f"[Recognizer] Flattened phones: {phones}")
         return phones

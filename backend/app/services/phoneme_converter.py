@@ -46,8 +46,37 @@ ARPA_TO_IPA = {
     "W": "w",
     "Y": "j",
     "Z": "z",
+# Consonants (continued)
     "ZH": "ʒ",
 }
+
+def normalize_ipa_sequence(ipa_list: list[str]) -> list[str]:
+    """
+    Normalizes a list of IPA strings into a flat sequence of atomic IPA symbols.
+    Handles diphthongs and affricates by splitting them into individual characters
+    to ensure consistent alignment across different models.
+    """
+    import re
+    # 1. Join everything into one string
+    full_str = "".join(ipa_list)
+    
+    # 2. Cleanup: Remove stress marks and other non-phonemic symbols
+    # ˈ (primary stress), ˌ (secondary stress), ː (length), 
+    # ' (apostrophe/separator), spaces, etc.
+    full_str = re.sub(r"[ˈˌː' \-.]", "", full_str)
+    
+    # 3. Standardize common variants
+    # Sometimes models use 'g' instead of 'ɡ', etc.
+    full_str = full_str.replace("g", "ɡ")
+    
+    # 4. Handle DIPHTHONG inconsistency: 
+    # Ensure they are always treated as individual components for alignment.
+    # Note: list() on a string already does this for most cases, 
+    # but we want to be explicit.
+    symbols = list(full_str)
+    
+    # Filter out empty or whitespace results
+    return [s for s in symbols if s.strip()]
 
 
 def arpa_to_ipa(phoneme: str) -> str:
@@ -62,5 +91,8 @@ def arpa_to_ipa(phoneme: str) -> str:
 
 
 def convert_phonemes(phonemes: list[str]) -> list[str]:
-    """Convert a list of ARPAbet phonemes to IPA."""
+    """
+    Convert a list of ARPAbet phonemes to IPA.
+    Returns the list as provided by the mapping.
+    """
     return [arpa_to_ipa(p) for p in phonemes]

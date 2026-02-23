@@ -4,7 +4,7 @@ from app.services.tts import TTSService
 from app.services.aligner import AlignerService
 from app.services.scorer import ScorerService
 from app.services.recognizer import RecognizerService
-from app.services.phoneme_converter import convert_phonemes
+from app.services.phoneme_converter import convert_phonemes, normalize_ipa_sequence
 import shutil
 import os
 import uuid
@@ -124,11 +124,8 @@ async def init_practice(
         # Convert to IPA for display
         phonemes_ipa_list = convert_phonemes(phonemes_arpa)
         
-        # Flatten and clean IPA symbols (remove stress marks, long marks, and join to chars)
-        import re
-        all_ipa_str = "".join(phonemes_ipa_list)
-        clean_ipa_str = re.sub(r"[ˈˌː' \-]", "", all_ipa_str)
-        phonemes_ipa = list(clean_ipa_str)
+        # Flatten and clean IPA symbols using centralized normalizer
+        phonemes_ipa = normalize_ipa_sequence(phonemes_ipa_list)
         
         print(f"[API] IPA phonemes (flattened): {phonemes_ipa}")
         
@@ -181,11 +178,8 @@ def score_practice(audio: UploadFile = File(...), text: str = Form(...), ref_pho
         ref_phonemes_arpa = [p for p in ref_phonemes_arpa if p.strip() and p not in ["'", ",", ".", " ", "?", "!"]]
         ref_phonemes_ipa_list = convert_phonemes(ref_phonemes_arpa)
         
-        # Consistent flattening for scoring
-        import re
-        all_ref_ipa_str = "".join(ref_phonemes_ipa_list)
-        clean_ref_ipa_str = re.sub(r"[ˈˌː' \-]", "", all_ref_ipa_str)
-        ref_phonemes_ipa = list(clean_ref_ipa_str)
+        # Consistent flattening for scoring using centralized normalizer
+        ref_phonemes_ipa = normalize_ipa_sequence(ref_phonemes_ipa_list)
         
         print(f"[API] Reference phonemes (IPA flattened): {ref_phonemes_ipa}")
             
